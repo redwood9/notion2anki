@@ -25,6 +25,7 @@ DEBUG_MODE=false  # Set to true for debug logging
 
 3. Share your Notion pages with the integration:
    - In Notion, share each page containing flashcards with your integration
+   - Question and Answer must be “``````” cod block
    - Pages should contain flashcards in this format:
      ```
      问题: 你的问题内容
@@ -34,7 +35,7 @@ DEBUG_MODE=false  # Set to true for debug logging
      - Answers can be on the same line or on new lines
      - Multiple flashcards per page are supported
      - Example:
-       ```
+       \`\`\`
        问题: What is the capital of France?
        答案: Paris
         
@@ -44,7 +45,7 @@ DEBUG_MODE=false  # Set to true for debug logging
         
        Question: What is Newton's first law?
        Answer: An object at rest stays at rest
-       ```
+       \`\`\`
 
 ## Usage
 
