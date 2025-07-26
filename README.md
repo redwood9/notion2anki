@@ -29,18 +29,22 @@ ANKI_CONNECT_URL=http://localhost:8765  # Default value
      问题: 你的问题内容
      答案: 你的答案内容
      ```
-     - Both Chinese (`问题：`) and English (`问题:`) colons are supported
+     - Both Chinese colons are supported
      - Answers can be on the same line or on new lines
      - Multiple flashcards per page are supported
      - Example:
        ```
        问题: What is the capital of France?
        答案: Paris
-       
+        
        问题: 水的化学式是什么？
-       答案: 
+       回答: 
        H₂O
+        
+       Question: What is Newton's first law?
+       Answer: An object at rest stays at rest
        ```
+
 
 ## Usage
 
@@ -58,6 +62,13 @@ The tool will:
 
 - `NOTION_API_KEY`: Your Notion integration token
 - `ANKI_CONNECT_URL`: Anki-Connect endpoint (default: http://localhost:8765)
+- `DEBUG_MODE`: Set to "true" to enable detailed debug logging (default: false)
+
+## Debugging
+To troubleshoot issues, enable debug mode by setting `DEBUG_MODE=true` in your `.env` file. This will log:
+- Notion API requests and responses
+- Parsed flashcard content
+- Anki import details
 
 ## Notes
 
