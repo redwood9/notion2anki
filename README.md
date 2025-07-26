@@ -34,7 +34,7 @@ DEBUG_MODE=false  # Set to true for debug logging
      - Both Chinese colons are supported
      - Answers can be on the same line or on new lines
      - Multiple flashcards per page are supported
-     - Example:<\br>
+     - Example:
   
       \```
        ```
