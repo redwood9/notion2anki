@@ -20,6 +20,7 @@ cargo build --release
 ```env
 NOTION_API_KEY=your_integration_token_here
 ANKI_CONNECT_URL=http://localhost:8765  # Default value
+DEBUG_MODE=false  # Set to true for debug logging
 ```
 
 3. Share your Notion pages with the integration:
@@ -45,7 +46,6 @@ ANKI_CONNECT_URL=http://localhost:8765  # Default value
        Answer: An object at rest stays at rest
        ```
 
-
 ## Usage
 
 1. Run the importer:
@@ -57,6 +57,7 @@ The tool will:
 - Fetch all pages accessible to your Notion integration
 - Parse pages for flashcards in the specified format
 - Import valid flashcards into Anki
+- Generate detailed log file `log.log` when DEBUG_MODE is enabled
 
 ## Configuration Options
 
@@ -65,13 +66,17 @@ The tool will:
 - `DEBUG_MODE`: Set to "true" to enable detailed debug logging (default: false)
 
 ## Debugging
-To troubleshoot issues, enable debug mode by setting `DEBUG_MODE=true` in your `.env` file. This will log:
-- Notion API requests and responses
-- Parsed flashcard content
-- Anki import details
+To troubleshoot issues, enable debug mode by setting `DEBUG_MODE=true` in your `.env` file. This will:
+- Log detailed debug information to console
+- Generate a `log.log` file with detailed execution trace
+- Include:
+  - Notion API requests and responses
+  - Parsed flashcard content
+  - Anki import details
 
 ## Notes
 
 - Cards will be imported to a deck named "Notion Import"
 - Uses the "Basic" card model by default
 - Only pages shared with your integration will be processed
+- Detailed logs are saved to `log.log` when DEBUG_MODE is enabled
