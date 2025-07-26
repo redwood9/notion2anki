@@ -35,7 +35,8 @@ DEBUG_MODE=false  # Set to true for debug logging
      - Answers can be on the same line or on new lines
      - Multiple flashcards per page are supported
      - Example:
-       \`\`\`
+      \```
+       ```
        问题: What is the capital of France?
        答案: Paris
         
@@ -45,7 +46,8 @@ DEBUG_MODE=false  # Set to true for debug logging
         
        Question: What is Newton's first law?
        Answer: An object at rest stays at rest
-       \`\`\`
+       ```
+      \```
 
 ## Usage
 
