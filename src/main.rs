@@ -1,7 +1,6 @@
 use dotenvy::dotenv;
-use regex::Regex;
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::json;
 use std::env;
 
@@ -14,92 +13,124 @@ struct Flashcard {
 #[derive(Deserialize, Debug)]
 struct NotionPage {
     id: String,
-    properties: serde_json::Value,
 }
 
 #[derive(Deserialize, Debug)]
-struct NotionQueryResponse {
+struct NotionSearchResponse {
     results: Vec<NotionPage>,
 }
 
-#[derive(Deserialize, Debug)]
-struct NotionBlock {
-    id: String,
-    paragraph: Option<ParagraphContent>,
-    heading_1: Option<HeadingContent>,
-    heading_2: Option<HeadingContent>,
-    heading_3: Option<HeadingContent>,
-}
 
-#[derive(Deserialize, Debug)]
-struct ParagraphContent {
-    rich_text: Vec<RichText>,
-}
-
-#[derive(Deserialize, Debug)]
-struct HeadingContent {
-    rich_text: Vec<RichText>,
-}
-
-#[derive(Deserialize, Debug)]
-struct RichText {
-    plain_text: String,
-}
-
-async fn fetch_notion_database() -> Result<Vec<NotionPage>, reqwest::Error> {
+async fn fetch_all_pages() -> Result<Vec<NotionPage>, reqwest::Error> {
     let notion_api_key = env::var("NOTION_API_KEY").expect("NOTION_API_KEY must be set");
-    let database_id = env::var("NOTION_DATABASE_ID").expect("NOTION_DATABASE_ID must be set");
-    let url = format!("https://api.notion.com/v1/databases/{}/query", database_id);
+    let url = "https://api.notion.com/v1/search";
 
     let client = Client::new();
     let response = client
-        .post(&url)
+        .post(url)
         .header("Authorization", format!("Bearer {}", notion_api_key))
         .header("Notion-Version", "2022-06-28")
         .header("Content-Type", "application/json")
         .json(&json!({
             "filter": {
-                "property": "Status",
-                "select": {
-                    "equals": "Ready to Import"
-                }
-            }
+                "value": "page",
+                "property": "object"
+            },
+            "page_size": 100
         }))
         .send()
         .await?;
 
-    let query_response: NotionQueryResponse = response.json().await?;
-    Ok(query_response.results)
+    let search_response: NotionSearchResponse = response.json().await?;
+    Ok(search_response.results)
 }
 
 async fn fetch_page_content(page_id: &str) -> Result<String, reqwest::Error> {
     let notion_api_key = env::var("NOTION_API_KEY").expect("NOTION_API_KEY must be set");
-    let url = format!("https://api.notion.com/v1/blocks/{}/children?page_size=100", page_id);
-
     let client = Client::new();
-    let response = client
-        .get(&url)
+    
+    // 获取页面元数据
+    let page_data = client
+        .get(&format!("https://api.notion.com/v1/pages/{}", page_id))
         .header("Authorization", format!("Bearer {}", notion_api_key))
         .header("Notion-Version", "2022-06-28")
         .send()
+        .await?
+        .text()
         .await?;
-
-    let body = response.text().await?;
-    Ok(body)
+    
+    // 获取页面内容块
+    let blocks_data = client
+        .get(&format!("https://api.notion.com/v1/blocks/{}/children?page_size=100", page_id))
+        .header("Authorization", format!("Bearer {}", notion_api_key))
+        .header("Notion-Version", "2022-06-28")
+        .send()
+        .await?
+        .text()
+        .await?;
+    
+    // 合并页面数据和块数据
+    Ok(format!("{{\"page\": {}, \"blocks\": {}}}", page_data, blocks_data))
 }
 
 fn parse_flashcards(content: &str) -> Vec<Flashcard> {
-    let mut flashcards = Vec::new();
-    // Improved regex to handle multi-line answers
-    let re = Regex::new(r"(?ms)(?:^|\n)问题[:：]\s*(.*?)\s*\n答案[:：]\s*([\s\S]*?)(?=\n问题[:：]|\n*$)").unwrap();
     
-    for capture in re.captures_iter(content) {
-        if let (Some(question), Some(answer)) = (capture.get(1), capture.get(2)) {
-            flashcards.push(Flashcard {
-                question: question.as_str().trim().to_string(),
-                answer: answer.as_str().trim().to_string(),
-            });
+    let mut flashcards = Vec::new();
+    let mut current_question = String::new();
+    let mut current_answer = String::new();
+    let mut in_flashcard = false;
+    
+    // 解析JSON内容
+    let page_content: serde_json::Value = serde_json::from_str(content).unwrap_or_default();
+    let empty_vec = Vec::new();
+    let blocks = page_content["blocks"].as_array().unwrap_or(&empty_vec);
+    
+    for block in blocks {
+        if let Some(block_obj) = block.as_object() {
+            let text = if let Some(para) = block_obj.get("paragraph") {
+                para["rich_text"][0]["plain_text"].as_str().unwrap_or("").to_string()
+            } else if let Some(heading) = block_obj.get("heading_1") {
+                heading["rich_text"][0]["plain_text"].as_str().unwrap_or("").to_string()
+            } else if let Some(heading) = block_obj.get("heading_2") {
+                heading["rich_text"][0]["plain_text"].as_str().unwrap_or("").to_string()
+            } else if let Some(heading) = block_obj.get("heading_3") {
+                heading["rich_text"][0]["plain_text"].as_str().unwrap_or("").to_string()
+            } else {
+                continue;
+            };
+            
+            // 检测问题开始
+            if text.starts_with("问题:") || text.starts_with("问题：") {
+                if in_flashcard && !current_question.is_empty() {
+                    flashcards.push(Flashcard {
+                        question: current_question.trim().to_string(),
+                        answer: current_answer.trim().to_string(),
+                    });
+                    current_answer.clear();
+                }
+                current_question = text.replacen("问题:", "", 1).replacen("问题：", "", 1).trim().to_string();
+                in_flashcard = true;
+            } 
+            // 检测答案开始
+            else if in_flashcard && (text.starts_with("答案:") || text.starts_with("答案：")) {
+                current_answer.push_str(&text.replacen("答案:", "", 1).replacen("答案：", "", 1));
+            }
+            // 收集答案内容
+            else if in_flashcard && !current_question.is_empty() {
+                if !current_answer.is_empty() {
+                    current_answer.push('\n');
+                }
+                current_answer.push_str(&text);
+            }
         }
+    }
+    
+    // 添加最后一个卡片
+    if in_flashcard && !current_question.is_empty() {
+        flashcards.push(Flashcard {
+            question: current_question.trim().to_string(),
+            answer: current_answer.trim().to_string(),
+        });
     }
     
     flashcards
@@ -142,7 +173,7 @@ async fn add_note_to_anki(flashcard: &Flashcard) -> Result<(), reqwest::Error> {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
     
-    let pages = fetch_notion_database().await?;
+    let pages = fetch_all_pages().await?;
     println!("Found {} pages to import", pages.len());
     
     let mut success_count = 0;
