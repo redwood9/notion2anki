@@ -1,0 +1,6 @@
+{
+  "notion_api_key": "your_notion_api_key_here",
+  "anki_connect_url": "http://localhost:8765",
+  "debug_mode": false
+}
+
